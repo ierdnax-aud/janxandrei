@@ -1,10 +1,8 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Mail, Users, ArrowLeft } from "lucide-react"
+import { sql } from "@/lib/db"
 
 interface Subscriber {
   id: number
@@ -12,32 +10,18 @@ interface Subscriber {
   created_at: string
 }
 
-export default function AdminDashboard({ userId }: { userId: string }) {
-  const [subscribers, setSubscribers] = useState<Subscriber[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  useEffect(() => {
-    fetchSubscribers()
-  }, [])
-
-  const fetchSubscribers = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch("/api/admin/subscribers")
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch subscribers")
-      }
-
-      const data = await response.json()
-      setSubscribers(data.subscribers || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load subscribers")
-    } finally {
-      setLoading(false)
-    }
+async function getSubscribers(): Promise<Subscriber[]> {
+  try {
+    const subscribers = await sql("SELECT id, email, created_at FROM subscribers ORDER BY created_at DESC")
+    return subscribers as Subscriber[]
+  } catch (error) {
+    console.error("Error fetching subscribers:", error)
+    return []
   }
+}
+
+export default async function AdminDashboard() {
+  const subscribers = await getSubscribers()
 
   return (
     <main className="min-h-screen bg-background">
@@ -79,8 +63,8 @@ export default function AdminDashboard({ userId }: { userId: string }) {
             <Card className="p-6 bg-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">User ID</p>
-                  <p className="text-sm font-mono mt-2 truncate">{userId}</p>
+                  <p className="text-muted-foreground text-sm">Newsletter Status</p>
+                  <p className="text-lg font-bold mt-2 text-primary">Active</p>
                 </div>
                 <Mail className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -88,8 +72,8 @@ export default function AdminDashboard({ userId }: { userId: string }) {
 
             <Card className="p-6 bg-card">
               <div>
-                <p className="text-muted-foreground text-sm">Status</p>
-                <p className="text-lg font-bold mt-2 text-primary">Active</p>
+                <p className="text-muted-foreground text-sm">Last Updated</p>
+                <p className="text-sm font-mono mt-2">{new Date().toLocaleDateString()}</p>
               </div>
             </Card>
           </div>
@@ -103,11 +87,7 @@ export default function AdminDashboard({ userId }: { userId: string }) {
               </h2>
             </div>
 
-            {error && <div className="bg-destructive/10 text-destructive p-4 m-4 rounded-lg">{error}</div>}
-
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading subscribers...</div>
-            ) : subscribers.length === 0 ? (
+            {subscribers.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 No subscribers yet. Share your newsletter signup to get started!
               </div>
